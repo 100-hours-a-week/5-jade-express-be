@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bdps = require('body-parser');
 const session = require('express-session');
+const fileStore = require('session-file-store')(session);
 
 router.use(bdps.urlencoded({extended:true}));
 router.use(bdps.json());
@@ -17,13 +18,14 @@ router.use(session({
       httpOnly: true, // 클라이언트에서 쿠키를 확인하지 못하도록 설정
       secure: false
     },
-    name: 'session-cookie'
+    name: 'session-cookie',
+    store: new fileStore()
 }));
 
 // 세션 코드 -------------------------------------------
 // 로그인 세션 생성 - GET
 // body - email, password
-router.get('/login', (req, res) => {
+router.get('/login/:userId', (req, res) => {
     try{
         if(req.session.userId){
             res.status(402).send('Already logged in');
@@ -33,8 +35,12 @@ router.get('/login', (req, res) => {
         const { email, password } = req.body;
         const user = users.find(user => user.email === email && user.password === password);
         if(user) {
-            req.session.userId = user.userId;
-            res.status(200).send('Logged in');
+            if(req.session.userId===undefined) {
+                req.session.userId = user.userId;
+            }
+            req.session.save(()=>{
+                res.status(200).send('Logged in');
+            });
         } else {
             res.status(401).send('Invalid email or password');
         }
@@ -121,7 +127,7 @@ router.patch('/post/:postId', (req, res) => {
         if(!post) {
             return res.status(500).send("Internal Server Error");
         } else if(post.writer !== req.session.userId) {
-            return res.status(400).send('No permission to delete post');
+            return res.status(400).send('No permission to edit post');
         } else {
             post.title = req.body.title;
             post.content = req.body.content;
@@ -153,13 +159,25 @@ router.delete('/post/:postId', (req, res) => {
 
 // 댓글 조회 - GET
 // param - postId
-router.get('/comment/:postId', (req, res) => {
+router.get('/comments/:postId', (req, res) => {
     const data = fs.readFileSync('data/comment.json');
     const comments = JSON.parse(data);
     const comment = comments.filter(comment => comment.postId === parseInt(req.params.id));
     if(!comment) {
         return res.status(404).send('Post not found');
     }else {
+        res.send(comment);
+    }
+});
+
+// 댓글 개별 조회 - GET
+router.get('/comment/:commentId', (req, res) => {
+    const data = fs.readFileSync('data/comment.json');
+    const comments = JSON.parse(data);
+    const comment = comments.find(comment => comment.commentId === parseInt(req.params.commentId));
+    if(!comment) {
+        return res.status(404).send('Comment not found');
+    } else {
         res.send(comment);
     }
 });
@@ -238,8 +256,19 @@ router.delete('/comment/:commentId', (req, res) => {
     }
 });
 
-// 프로필 수정 페이지 - GET
+// 유저 - GET
 router.get('/user', (req, res) => {
+    try{
+        const data = fs.readFileSync('data/user.json');
+        const users = JSON.parse(data);
+        res.send(users);
+    } catch(err) {
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// 프로필 수정 페이지 - GET
+router.get('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json');
         const users = JSON.parse(data);
@@ -277,8 +306,8 @@ router.post('/user', (req, res) => {
 });
 
 // 프로필 수정 - PATCH
-// body - email, nickname, profile_image
-router.patch('/user', (req, res) => {
+// body - email, (profile_image - 보류)
+router.patch('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json');
         const users = JSON.parse(data);
@@ -286,12 +315,11 @@ router.patch('/user', (req, res) => {
         if(!user) {
             return res.status(404).send('User not found');
         } else {
-            const { email, nickname, profile_image } = req.body;
+            const { email} = req.body;
             user.email = email;
-            user.nickname = nickname;
-            user.profile_image = profile_image;
+            //user.profile_image = profile_image;
             fs.writeFileSync('data/user.json', JSON.stringify(users));
-            res.send(user);
+            res.status(200).send(user);
         }
     } catch(err) {
         res.status(500).send('Internal Server Error');
@@ -299,7 +327,7 @@ router.patch('/user', (req, res) => {
 });
 
 // 회원탈퇴 - DELETE
-router.delete('/user', (req, res) => {
+router.delete('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json');
         const users = JSON.parse(data);
@@ -342,7 +370,7 @@ router.delete('/user', (req, res) => {
 
 // 비밀번호 수정 - PATCH
 // body - password
-router.PATCH('/user/password', (req, res) => {
+router.PATCH('/user/password/:userId', (req, res) => {
 
     const data = fs.readFileSync('data/user.json');
     const users = JSON.parse(data);

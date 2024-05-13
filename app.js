@@ -5,7 +5,6 @@ const app = express();
 const session = require('express-session');
 const port = process.env.PORT;
 
-// body-parser 설정
 app.use(express.urlencoded({extended:true}));
 app.use(express.json());
 
