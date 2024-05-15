@@ -7,8 +7,9 @@
 1. frontend->backend fetch module => public/js/fileFetch.js
 2. static file add views-html, public-css, images, js -done
 3. static file edit-path -done
-4. client js file edit-path, fetch module -WIP
-5. get backend->frontend response data
+4. client js file edit-path, fetch module -done
+5. post.js, html improve - done
+6. get backend->frontend response data
 
 #todos
 1. test session - 나중으로 미루기
