@@ -9,7 +9,8 @@
 3. static file edit-path -done
 4. client js file edit-path, fetch module -done
 5. post.js, html improve - done
-6. get backend->frontend response data
+6. get backend->frontend response data - done
+7. post.js - line 66
 
 #todos
 1. test session - 나중으로 미루기

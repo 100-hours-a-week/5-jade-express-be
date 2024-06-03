@@ -105,7 +105,7 @@ router.post('/post', (req, res) => {
         const minute = (date.getMinutes()+1).toString().padStart(2, '0');
         const second = (date.getSeconds()+1).toString().padStart(2, '0');
         const post = { 
-            id: posts.length + 1, 
+            postId: posts.length + 1, 
             // writer: req.session.userId, 
             writer: 1,
             title: title, 
@@ -234,14 +234,12 @@ router.patch('/comment/:commentId', (req, res) => {
         const data = fs.readFileSync('data/comment.json', 'utf8');
         const comments = JSON.parse(data);
         const comment = comments.find(comment => comment.commentId === parseInt(req.params.commentId));
-        console.log(comment);
         if(!comment) {
             return res.status(404).send('Comment not found');
         // } else if(comment.writer !== req.session.userId) {
         //     return res.status(400).send('No permission to edit comment');
         } else {
             comment.text = text;
-            console.log(comments)
             fs.writeFileSync('data/comment.json', JSON.stringify(comments));
             res.status(200).send("Comment editted");
         }
@@ -289,7 +287,7 @@ router.get('/user/:userId', (req, res) => {
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         // const user = users.find(user => user.userId === req.session.userId);
-        const user = users.find(user => user.userId === req.params.userId);
+        const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         }
@@ -323,18 +321,18 @@ router.post('/user', (req, res) => {
 });
 
 // 프로필 수정 - PATCH
-// body - email, (profile_image - 보류)
+// body - nickname, (profile_image - 보류)
 router.patch('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         // const user = users.find(user => user.userId === req.session.userId);
-        const user = users.find(user => user.userId === req.params.userId);
+        const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         } else {
-            const { email } = req.body;
-            user.email = email;
+            const { nickname } = req.body;
+            user.nickname = nickname;
             //user.profile_image = profile_image;
             fs.writeFileSync('data/user.json', JSON.stringify(users));
             res.status(200).send(user);
@@ -350,7 +348,7 @@ router.delete('/user/:userId', (req, res) => {
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         // const user = users.find(user => user.userId === req.session.userId);
-        const user = users.find(user => user.userId === req.params.userId);
+        const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         } else {
@@ -363,12 +361,12 @@ router.delete('/user/:userId', (req, res) => {
                 const data3 = fs.readFileSync('data/comment.json', 'utf8');
                 const comments = JSON.parse(data3);
                 posts.forEach(post => {
-                    if(post.writer === req.params.userId) {
+                    if(post.writer === parseInt(req.params.userId)) {
                         posts.splice(posts.indexOf(post), 1);
                     }
                 });
                 comments.forEach(comment => {
-                    if(comment.writer === req.params.userId) {
+                    if(comment.writer === parseInt(req.params.userId)) {
                         comments.splice(comments.indexOf(comment), 1);
                     }
                 });
@@ -393,7 +391,7 @@ router.patch('/user/password/:userId', (req, res) => {
 
     const data = fs.readFileSync('data/user.json', 'utf8');
     const users = JSON.parse(data);
-    const user = users.find(user => user.userId === req.params.userId);
+    const user = users.find(user => user.userId === parseInt(req.params.userId));
     if(!user) {
         return res.status(404).send('User not found');
     } else {
