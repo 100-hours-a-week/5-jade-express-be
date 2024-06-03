@@ -5,13 +5,15 @@
 
 #workflow-fe
 1. frontend->backend fetch module => public/js/fileFetch.js
-2. static file add views-html, public-css, images, js
-3. static file edit-path
-4. client js file edit-path, fetch module
-5. get backend->frontend response data
+2. static file add views-html, public-css, images, js -done
+3. static file edit-path -done
+4. client js file edit-path, fetch module -done
+5. post.js, html improve - done
+6. get backend->frontend response data - done
+7. post.js - line 66
 
 #todos
-1. test session
+1. test session - 나중으로 미루기
 라우터 모듈에서도 세션이 제대로 동작할까?
 하지 않는다면 router 모듈을 삭제하고 app.js로 통합할 필요가 있음
 2. test fetch module
@@ -20,7 +22,8 @@
 5. test file I/O
 6. test demands
 7. improve sites
-
+8. edit password line 17(다른 파일들 헤더도 동일) header image src 변경 필요 -done
+9. 
 
 #changes
 1. post.json id=>postId (key 변경)
@@ -37,7 +40,7 @@
 7. PORT, SECRET .env 추가
 
 
-#think about
+#고려중
 1. json writer => userId
 2. edit method to patch for RESTful - done
 3. image get / upload
