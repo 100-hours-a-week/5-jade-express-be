@@ -3,45 +3,47 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const bdps = require('body-parser');
-// const session = require('express-session');
-// const fileStore = require('session-file-store')(session);
+const session = require('express-session');
+const fileStore = require('session-file-store')(session);
+const env = require('dotenv');
 
 router.use(bdps.urlencoded({extended:true}));
 router.use(bdps.json());
 
-// router.use(session({
-//     secure: false, // http 환경에서도 session 정보를 주고받도록 처리
-//     secret: 'secret key', // session id를 암호화하기 위한 키, 실제 사용시에는 노출되지 않도록 처리해야 함
-//     resave: false, // session을 언제나 저장할지 설정
-//     saveUninitialized: true, // 초기화되지 않은 session을 저장
-//     cookie: {
-//       httpOnly: true, // 클라이언트에서 쿠키를 확인하지 못하도록 설정
-//       secure: false
-//     },
-//     name: 'session-cookie',
-//     store: new fileStore()
-// }));
+router.use(session({
+    secure: false, // http 환경에서도 session 정보를 주고받도록 처리
+    secret: env.SESSION_SECRET, // session id를 암호화하기 위한 키, 실제 사용시에는 노출되지 않도록 처리해야 함
+    resave: false, // session을 언제나 저장할지 설정
+    saveUninitialized: true, // 초기화되지 않은 session을 저장
+    cookie: {
+      httpOnly: true, // 클라이언트에서 쿠키를 확인하지 못하도록 설정
+      secure: false,
+      maxAge: 60*1000
+    },
+    name: 'session-name',
+    store: new fileStore()
+}));
 
 // 세션 코드 -------------------------------------------
 // 로그인 세션 생성 - POST
 // body - email, password
 router.post('/login', (req, res) => {
     try{
-        // if(req.session.userId){
-        //     return res.status(402).send('Already logged in');
-        // }
+        if(req.session.userId){
+            return res.status(402).send('Already logged in');
+        }
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         const { email, password } = req.body;
         const user = users.find(user => user.email === email && user.password === password);
         if(user) {
-            // if(!(req.session.userId)) {
-            //     console.log(req.session);
-            //     req.session.userId = user.userId;
-            //     req.session.save(()=>{
-            //         return res.status(200).send('Logged in');
-            //     });
-            // }
+            if(!(req.session.userId)) {
+                req.session.userId = user.userId;
+                req.session.save(()=>{
+                    console.log(req.session);
+                    return res.status(200).send('Logged in');
+                });
+            }
             return res.status(200).send('Logged in');
         } else {
             return res.status(401).send('Invalid email or password');
@@ -53,12 +55,13 @@ router.post('/login', (req, res) => {
 
 // 로그아웃
 router.get('/logout', (req, res) => {
-    // req.session.destroy(err => {
-    //     if(err) {
-    //         return res.status(500).send('Internal Server Error');
-    //     }
-    // }
-    // );
+    req.session.destroy(err => {
+        if(err) {
+            return res.status(500).send('Internal Server Error');
+        }
+        return res.status(200).send("Logout Success");
+    }
+    );
     res.redirect(302, '/');
 });
 // -----------------------------------------------------
@@ -106,8 +109,7 @@ router.post('/post', (req, res) => {
         const second = (date.getSeconds()+1).toString().padStart(2, '0');
         const post = { 
             postId: posts.length + 1, 
-            // writer: req.session.userId, 
-            writer: 1,
+            writer: req.session.userId, 
             title: title, 
             time: `${date.getFullYear()}-${month}-${day} ${hour}:${minute}:${second}`,
             image: image,
@@ -135,8 +137,8 @@ router.patch('/post/:postId', (req, res) => {
         const {title, content, image} = req.body;
         if(!post) {
             return res.status(500).send("Internal Server Error");
-        // } else if(post.writer !== req.session.userId) {
-        //     return res.status(400).send('No permission to edit post');
+        } else if(post.writer !== req.session.userId) {
+            return res.status(400).send('No permission to edit post');
         } else {
             post.title = title;
             post.content = content;
@@ -157,8 +159,8 @@ router.delete('/post/:postId', (req, res) => {
     const post = posts.find(post => post.postId === parseInt(req.params.postId));
     if(!post){
         return res.status(404).send('Post not found');
-    // } else if(post.writer !== req.session.userId) {
-    //     return res.status(400).send('No permission to delete post');
+    } else if(post.writer !== req.session.userId) {
+        return res.status(400).send('No permission to delete post');
     } else {
         posts.splice(posts.indexOf(post), 1);
         fs.writeFileSync('data/post.json', JSON.stringify(posts));
@@ -212,9 +214,8 @@ router.post('/comment/:postId', (req, res) => {
         const comment = {
             commentId: comments.length + 1,
             postId: parseInt(req.params.postId),
-            // writer: req.session.userId,
-            writer: 1,
-            time: `${date.getFullYear()}-${month}-${day} ${hour}:${minute}:${second}`,
+            writer: req.session.userId,
+            time: date.getFullYear()+'-'+month+'-'+day+' '+hour+':'+minute+':'+second,
             text: text
         };
         comments.push(comment);
@@ -238,8 +239,8 @@ router.patch('/comment/:commentId', (req, res) => {
         const comment = comments.find(comment => comment.commentId === parseInt(req.params.commentId));
         if(!comment) {
             return res.status(404).send('Comment not found');
-        // } else if(comment.writer !== req.session.userId) {
-        //     return res.status(400).send('No permission to edit comment');
+        } else if(comment.writer !== req.session.userId) {
+            return res.status(400).send('No permission to edit comment');
         } else {
             comment.text = text;
             fs.writeFileSync('data/comment.json', JSON.stringify(comments));
@@ -259,8 +260,8 @@ router.delete('/comment/:commentId', (req, res) => {
         const comment = comments.find(comment => comment.commentId === parseInt(req.params.commentId));
         if(!comment){
             return res.status(404).send('Comment not found');
-        // } else if(comment.writer !== req.session.userId) {
-        //     return res.status(400).send('No permission to delete comment');
+        } else if(comment.writer !== req.session.userId) {
+            return res.status(400).send('No permission to delete comment');
         }
         else {
             comments.splice(comments.indexOf(comment), 1);
@@ -288,8 +289,9 @@ router.get('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
-        // const user = users.find(user => user.userId === req.session.userId);
-        const user = users.find(user => user.userId === parseInt(req.params.userId));
+        const user = users.find(user => user.userId === req.session.userId);
+        // 수정 필요
+        // const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         }
@@ -328,8 +330,9 @@ router.patch('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
-        // const user = users.find(user => user.userId === req.session.userId);
-        const user = users.find(user => user.userId === parseInt(req.params.userId));
+        const user = users.find(user => user.userId === req.session.userId);
+        // 수정 필요
+        // const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         } else {
@@ -349,8 +352,9 @@ router.delete('/user/:userId', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
-        // const user = users.find(user => user.userId === req.session.userId);
-        const user = users.find(user => user.userId === parseInt(req.params.userId));
+        const user = users.find(user => user.userId === req.session.userId);
+        // 수정 필요
+        // const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         } else {
@@ -363,12 +367,12 @@ router.delete('/user/:userId', (req, res) => {
                 const data3 = fs.readFileSync('data/comment.json', 'utf8');
                 const comments = JSON.parse(data3);
                 posts.forEach(post => {
-                    if(post.writer === parseInt(req.params.userId)) {
+                    if(post.writer === parseInt(req.session.userId)) {
                         posts.splice(posts.indexOf(post), 1);
                     }
                 });
                 comments.forEach(comment => {
-                    if(comment.writer === parseInt(req.params.userId)) {
+                    if(comment.writer === parseInt(req.session.userId)) {
                         comments.splice(comments.indexOf(comment), 1);
                     }
                 });
@@ -393,7 +397,8 @@ router.patch('/user/password/:userId', (req, res) => {
 
     const data = fs.readFileSync('data/user.json', 'utf8');
     const users = JSON.parse(data);
-    const user = users.find(user => user.userId === parseInt(req.params.userId));
+    // 수정 필요
+    const user = users.find(user => user.userId === parseInt(req.session.userId));
     if(!user) {
         return res.status(404).send('User not found');
     } else {
