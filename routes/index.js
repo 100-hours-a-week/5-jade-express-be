@@ -109,7 +109,7 @@ router.post('/post', (req, res) => {
             // writer: req.session.userId, 
             writer: 1,
             title: title, 
-            time: date.getFullYear()+'-'+month+'-'+day+' '+hour+':'+minute+':'+second,
+            time: `${date.getFullYear()}-${month}-${day} ${hour}:${minute}:${second}`,
             image: image,
             content: content,
             likes: 0,
@@ -132,14 +132,15 @@ router.patch('/post/:postId', (req, res) => {
         const data = fs.readFileSync('data/post.json', 'utf8');
         const posts = JSON.parse(data);
         const post = posts.find(post => post.postId === parseInt(req.params.postId));
+        const {title, content, image} = req.body;
         if(!post) {
             return res.status(500).send("Internal Server Error");
         // } else if(post.writer !== req.session.userId) {
         //     return res.status(400).send('No permission to edit post');
         } else {
-            post.title = req.body.title;
-            post.content = req.body.content;
-            post.image = req.body.image;
+            post.title = title;
+            post.content = content;
+            post.image = image;
             fs.writeFileSync('data/post.json', JSON.stringify(posts));
             res.status(200).send("Post editted");
         }
@@ -179,6 +180,7 @@ router.get('/comments/:postId', (req, res) => {
 });
 
 // 댓글 개별 조회 - GET
+// param - commentId
 router.get('/comment/:commentId', (req, res) => {
     const data = fs.readFileSync('data/comment.json', 'utf8');
     const comments = JSON.parse(data);
@@ -212,7 +214,7 @@ router.post('/comment/:postId', (req, res) => {
             postId: parseInt(req.params.postId),
             // writer: req.session.userId,
             writer: 1,
-            time: date.getFullYear()+'-'+month+'-'+day+' '+hour+':'+minute+':'+second,
+            time: `${date.getFullYear()}-${month}-${day} ${hour}:${minute}:${second}`,
             text: text
         };
         comments.push(comment);
