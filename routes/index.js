@@ -134,6 +134,7 @@ router.post('/post', (req, res) => {
 // body - title, content, image
 router.patch('/post/:postId', (req, res) => {
     try{
+        // 세션 확인
         if(!req.session.userId){
             return res.status(400).send('Session expired');
         }
@@ -399,11 +400,11 @@ router.delete('/user', (req, res) => {
                 });
                 fs.writeFileSync('data/post.json', JSON.stringify(posts));
                 fs.writeFileSync('data/comment.json', JSON.stringify(comments));
-                // req.session.destroy(err => {
-                //     if(err) {
-                //         return res.status(500).send('Internal Server Error');
-                //     }
-                // });
+                req.session.destroy(err => {
+                    if(err) {
+                        return res.status(500).send('Internal Server Error');
+                    }
+                });
             });
             res.status(200).send('User deleted');
         }
