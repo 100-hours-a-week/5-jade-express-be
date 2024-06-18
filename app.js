@@ -8,7 +8,10 @@ const port = process.env.PORT;
 
 app.use(express.urlencoded({extended:true}));
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3030',
+  credentials: true
+}));
 // 정적 파일 설정
 app.use(express.static(path.join(__dirname, "public")));
 

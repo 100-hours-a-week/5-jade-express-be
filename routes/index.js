@@ -5,20 +5,20 @@ const path = require('path');
 const bdps = require('body-parser');
 const session = require('express-session');
 const fileStore = require('session-file-store')(session);
-const env = require('dotenv');
+const env = require('dotenv').config();
 
 router.use(bdps.urlencoded({extended:true}));
 router.use(bdps.json());
 
 router.use(session({
     secure: false, // http 환경에서도 session 정보를 주고받도록 처리
-    secret: env.SESSION_SECRET, // session id를 암호화하기 위한 키, 실제 사용시에는 노출되지 않도록 처리해야 함
+    secret: process.env.SESSION_SECRET, // session id를 암호화하기 위한 키, 실제 사용시에는 노출되지 않도록 처리해야 함
     resave: false, // session을 언제나 저장할지 설정
     saveUninitialized: true, // 초기화되지 않은 session을 저장
     cookie: {
       httpOnly: true, // 클라이언트에서 쿠키를 확인하지 못하도록 설정
       secure: false,
-      maxAge: 60*1000
+      maxAge: 60*100000
     },
     name: 'session-name',
     store: new fileStore()
@@ -40,8 +40,6 @@ router.post('/login', (req, res) => {
             if(!(req.session.userId)) {
                 req.session.userId = user.userId;
                 req.session.save(()=>{
-                    console.log(req.session);
-                    return res.status(200).send('Logged in');
                 });
             }
             return res.status(200).send('Logged in');
@@ -54,15 +52,17 @@ router.post('/login', (req, res) => {
 });
 
 // 로그아웃
-router.get('/logout', (req, res) => {
+router.post('/logout', (req, res) => {
+    if(!req.session.userId){
+        return res.status(400).send('Session expired');
+    }
     req.session.destroy(err => {
         if(err) {
             return res.status(500).send('Internal Server Error');
         }
-        return res.status(200).send("Logout Success");
     }
     );
-    res.redirect(302, '/');
+    return res.status(200).send("Logout Success");
 });
 // -----------------------------------------------------
 
@@ -98,6 +98,9 @@ router.get('/post/:postId', (req, res) => {
 // body - title, content, image
 router.post('/post', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const data = fs.readFileSync('data/post.json', 'utf8');
         const posts = JSON.parse(data);
         const { title, content, image } = req.body;
@@ -131,6 +134,9 @@ router.post('/post', (req, res) => {
 // body - title, content, image
 router.patch('/post/:postId', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const data = fs.readFileSync('data/post.json', 'utf8');
         const posts = JSON.parse(data);
         const post = posts.find(post => post.postId === parseInt(req.params.postId));
@@ -154,6 +160,9 @@ router.patch('/post/:postId', (req, res) => {
 // 게시글 삭제 - DELETE
 // param - postId
 router.delete('/post/:postId', (req, res) => {
+    if(!req.session.userId){
+        return res.status(400).send('Session expired');
+    }
     const data = fs.readFileSync('data/post.json', 'utf8');
     const posts = JSON.parse(data);
     const post = posts.find(post => post.postId === parseInt(req.params.postId));
@@ -199,6 +208,9 @@ router.get('/comment/:commentId', (req, res) => {
 // body - text
 router.post('/comment/:postId', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const { text } = req.body;
         const data = fs.readFileSync('data/comment.json', 'utf8');
         const postData = fs.readFileSync('data/post.json', 'utf8');
@@ -233,6 +245,9 @@ router.post('/comment/:postId', (req, res) => {
 // body - text
 router.patch('/comment/:commentId', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const { text } = req.body;
         const data = fs.readFileSync('data/comment.json', 'utf8');
         const comments = JSON.parse(data);
@@ -255,6 +270,9 @@ router.patch('/comment/:commentId', (req, res) => {
 // param - commentId
 router.delete('/comment/:commentId', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const data = fs.readFileSync('data/comment.json', 'utf8');
         const comments = JSON.parse(data);
         const comment = comments.find(comment => comment.commentId === parseInt(req.params.commentId));
@@ -274,7 +292,7 @@ router.delete('/comment/:commentId', (req, res) => {
 });
 
 // 유저 - GET
-router.get('/user', (req, res) => {
+router.get('/users', (req, res) => {
     try{
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
@@ -285,13 +303,14 @@ router.get('/user', (req, res) => {
 });
 
 // 프로필 수정 페이지 - GET
-router.get('/user/:userId', (req, res) => {
+router.get('/user', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         const user = users.find(user => user.userId === req.session.userId);
-        // 수정 필요
-        // const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         }
@@ -326,13 +345,14 @@ router.post('/user', (req, res) => {
 
 // 프로필 수정 - PATCH
 // body - nickname, (profile_image - 보류)
-router.patch('/user/:userId', (req, res) => {
+router.patch('/user', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         const user = users.find(user => user.userId === req.session.userId);
-        // 수정 필요
-        // const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         } else {
@@ -348,13 +368,14 @@ router.patch('/user/:userId', (req, res) => {
 });
 
 // 회원탈퇴 - DELETE
-router.delete('/user/:userId', (req, res) => {
+router.delete('/user', (req, res) => {
     try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
         const data = fs.readFileSync('data/user.json', 'utf8');
         const users = JSON.parse(data);
         const user = users.find(user => user.userId === req.session.userId);
-        // 수정 필요
-        // const user = users.find(user => user.userId === parseInt(req.params.userId));
         if(!user) {
             return res.status(404).send('User not found');
         } else {
@@ -393,11 +414,12 @@ router.delete('/user/:userId', (req, res) => {
 
 // 비밀번호 수정 - PATCH
 // body - password
-router.patch('/user/password/:userId', (req, res) => {
-
+router.patch('/user/password', (req, res) => {
+    if(!req.session.userId){
+        return res.status(400).send('Session expired');
+    }
     const data = fs.readFileSync('data/user.json', 'utf8');
     const users = JSON.parse(data);
-    // 수정 필요
     const user = users.find(user => user.userId === parseInt(req.session.userId));
     if(!user) {
         return res.status(404).send('User not found');
