@@ -23,7 +23,7 @@
 6. test demands
 7. improve sites
 8. edit password line 17(다른 파일들 헤더도 동일) header image src 변경 필요 -done
-9. 
+9. date 처리 기존 방식에서 mysql 방식으로 변경
 
 #changes
 1. post.json id=>postId (key 변경)
