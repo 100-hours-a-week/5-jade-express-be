@@ -11,7 +11,7 @@ const dbinfo = {
 // DB 연결
 module.exports = {
     init: function () {
-      return mysql.createConnection(db_info);
+      return mysql.createConnection(dbinfo);
     },
     connect: function (conn) {
       conn.connect(function (err) {

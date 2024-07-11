@@ -37,7 +37,7 @@ router.use(session({
     cookie: {
       httpOnly: true, // 클라이언트에서 쿠키를 확인하지 못하도록 설정
       secure: false,
-      maxAge: 60*20000
+      maxAge: 60*200000
     },
     name: 'session-name',
     store: mySQLStore
@@ -52,9 +52,8 @@ router.post('/login', (req, res) => {
         if(req.session.userId){
             return res.status(402).send('Already logged in');
         }
-        const users = JSON.parse(data);
         const { email, password } = req.body;
-        const query = `SELECT * FROM User WHERE email = ${email} AND password = ${password}`;
+        const query = `SELECT * FROM User WHERE email="${email}" AND password="${password}"`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -94,10 +93,13 @@ router.post('/logout', (req, res) => {
 // 게시글 목록 페이지 - GET
 router.get('/post', (req, res) => {
     try{
-        const query = `SELECT * FROM Post WHERE valid = true`;
+        const query = `SELECT * FROM Post WHERE valid=true`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
+            }
+            if(result.length === 0) {
+                return res.status(404).send('No data found');
             }
             res.send(result);
         });
@@ -110,7 +112,7 @@ router.get('/post', (req, res) => {
 // 게시글 상세 페이지 - GET
 router.get('/post/:postId', (req, res) => {
     try{
-        const query = `SELECT * FROM Post WHERE postId = ${parseInt(req.params.postId)}`;
+        const query = `SELECT * FROM Post WHERE postId=${parseInt(req.params.postId)}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -121,7 +123,7 @@ router.get('/post/:postId', (req, res) => {
             if(result[0].valid == false){
                 return res.status(404).send('Post not valid');
             }
-            res.send(result);
+            res.send(result[0]);
         });
     } catch(err) {
         res.status(500).send('Internal Server Error2');
@@ -136,10 +138,11 @@ router.post('/post', (req, res) => {
             return res.status(400).send('Session expired');
         }
         const { title, content, image } = req.body;
-        const query = `INSERT INTO Post (writer, title, image, content, valid) 
-        VALUES (${req.session.userId}, ${title}, ${image}, ${content}, true)`;
+        const query = `INSERT INTO Post (userId, title, image, content, valid) 
+        VALUES (${req.session.userId}, "${title}", "${image}", "${content}", true)`;
         conn.query(query, (err, result) => {
             if(err) {
+                console.log(err);
                 return res.status(500).send('Internal Server Error1');
             }
             res.status(200).send('Post created');
@@ -158,7 +161,7 @@ router.patch('/post/:postId', (req, res) => {
         if(!req.session.userId){
             return res.status(400).send('Session expired');
         }
-        const query = `SELECT * FROM Post WHERE postId = ${parseInt(req.params.postId)}`;
+        const query = `SELECT * FROM Post WHERE postId=${parseInt(req.params.postId)}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -169,11 +172,11 @@ router.patch('/post/:postId', (req, res) => {
             if(result[0].valid == false){
                 return res.status(404).send('Post not valid');
             }
-            if(result[0].writer !== req.session.userId) {
+            if(result[0].userId !== req.session.userId) {
                 return res.status(400).send('No permission to edit post');
             }
             const {title, content, image} = req.body;
-            const query2 = `UPDATE Post SET title = ${title}, content = ${content}, image = ${image} WHERE postId = ${parseInt(req.params.postId)}`;
+            const query2 = `UPDATE Post SET title="${title}", content="${content}", image="${image}" WHERE postId=${parseInt(req.params.postId)}`;
             conn.query(query2, (err, result) => {
                 if(err) {
                     return res.status(500).send('Internal Server Error2');
@@ -192,7 +195,7 @@ router.delete('/post/:postId', (req, res) => {
     if(!req.session.userId){
         return res.status(400).send('Session expired');
     }
-    const query = `SELECT * FROM Post WHERE postId = ${parseInt(req.params.postId)}`;
+    const query = `SELECT * FROM Post WHERE postId=${parseInt(req.params.postId)}`;
     conn.query(query, (err, result) => {
         if(err) {
             return res.status(500).send('Internal Server Error1');
@@ -203,10 +206,10 @@ router.delete('/post/:postId', (req, res) => {
         if(result[0].valid == false){
             return res.status(404).send('Post not valid');
         }
-        if(result[0].writer !== req.session.userId) {
+        if(result[0].userId !== req.session.userId) {
             return res.status(400).send('No permission to delete post');
         }
-        const query2 = `UPDATE Post SET valid = false WHERE postId = ${parseInt(req.params.postId)}`;
+        const query2 = `UPDATE Post SET valid=false WHERE postId=${parseInt(req.params.postId)}`;
         conn.query(query2, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error2');
@@ -219,7 +222,7 @@ router.delete('/post/:postId', (req, res) => {
 // 댓글 조회 - GET
 // param - postId
 router.get('/comments/:postId', (req, res) => {
-    const query = `SELECT * FROM Comment WHERE postId = ${parseInt(req.params.postId)} AND valid = true`;
+    const query = `SELECT * FROM Comment WHERE postId=${parseInt(req.params.postId)} AND valid=true`;
     conn.query(query, (err, result) => {
         if(err) {
             return res.status(500).send('Internal Server Error1');
@@ -234,7 +237,7 @@ router.get('/comments/:postId', (req, res) => {
 // 댓글 개별 조회 - GET
 // param - commentId
 router.get('/comment/:commentId', (req, res) => {
-    const query = `SELECT * FROM Comment WHERE commentId = ${parseInt(req.params.commentId)}`;
+    const query = `SELECT * FROM Comment WHERE commentId=${parseInt(req.params.commentId)}`;
     conn.query(query, (err, result) => {
         if(err) {
             return res.status(500).send('Internal Server Error1');
@@ -258,7 +261,7 @@ router.post('/comment/:postId', (req, res) => {
             return res.status(400).send('Session expired');
         }
         const { text } = req.body;
-        const query = `SELECT * FROM Post WHERE postId = ${parseInt(req.params.postId)}`;
+        const query = `SELECT * FROM Post WHERE postId=${parseInt(req.params.postId)}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -269,14 +272,15 @@ router.post('/comment/:postId', (req, res) => {
             if(result[0].valid == false){
                 return res.status(404).send('Post not valid');
             }
-            const query2 = `INSERT INTO Comment (postId, writer, text, valid)
-            VALUES (${parseInt(req.params.postId)}, ${req.session.userId}, ${text}, true)`;
+            const post = result[0];
+            const query2 = `INSERT INTO Comment (postId, userId, text, valid)
+            VALUES (${parseInt(req.params.postId)}, ${req.session.userId}, "${text}", true)`;
             conn.query(query2, (err
                 , result) => {
                 if(err) {
                     return res.status(500).send('Internal Server Error2');
                 }
-                const query3 = `UPDATE Post SET comments = ${result[0].comments+1}`;
+                const query3 = `UPDATE Post SET comments=${post.comments+1} WHERE postId=${parseInt(req.params.postId)}`;
                 conn.query(query3, (err
                     , result) => {
                     if(err) {
@@ -300,7 +304,7 @@ router.patch('/comment/:commentId', (req, res) => {
             return res.status(400).send('Session expired');
         }
         const { text } = req.body;
-        const query = `SELECT * FROM Comment WHERE commentId = ${parseInt(req.params.commentId)}`;
+        const query = `SELECT * FROM Comment WHERE commentId=${parseInt(req.params.commentId)}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -311,10 +315,10 @@ router.patch('/comment/:commentId', (req, res) => {
             if(result[0].valid == false){
                 return res.status(404).send('Comment not valid');
             }
-            if(result[0].writer !== req.session.userId) {
+            if(result[0].userId !== req.session.userId) {
                 return res.status(400).send('No permission to edit comment');
             }
-            const query2 = `UPDATE Comment SET text = ${text} WHERE commentId = ${parseInt(req.params.commentId)}`;
+            const query2 = `UPDATE Comment SET text="${text}" WHERE commentId=${parseInt(req.params.commentId)}`;
             conn.query(query2, (err, result) => {
                 if(err) {
                     return res.status(500).send('Internal Server Error2');
@@ -334,7 +338,7 @@ router.delete('/comment/:commentId', (req, res) => {
         if(!req.session.userId){
             return res.status(400).send('Session expired');
         }
-        const query = `SELECT * FROM Comment WHERE commentId = ${parseInt(req.params.commentId)}`;
+        const query = `SELECT * FROM Comment WHERE commentId=${parseInt(req.params.commentId)}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -345,10 +349,10 @@ router.delete('/comment/:commentId', (req, res) => {
             if(result[0].valid == false){
                 return res.status(404).send('Comment not valid');
             }
-            if(result[0].writer !== req.session.userId) {
+            if(result[0].userId !== req.session.userId) {
                 return res.status(400).send('No permission to delete comment');
             }
-            const query2 = `UPDATE Comment SET valid = false WHERE commentId = ${parseInt(req.params.commentId)}`;
+            const query2 = `UPDATE Comment SET valid=false WHERE commentId=${parseInt(req.params.commentId)}`;
             conn.query(query2, (err, result) => {
                 if(err) {
                     return res.status(500).send('Internal Server Error2');
@@ -369,7 +373,32 @@ router.get('/users', (req, res) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
             }
+            if(result.length === 0) {
+                return res.status(404).send('No data found');
+            }
             res.send(result);
+        });
+    } catch(err) {
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// 유저 개별 조회 - GET
+// param - userId
+router.get('/user/:userId', (req, res) => {
+    try{
+        const query = `SELECT * FROM User WHERE userId=${parseInt(req.params.userId)}`;
+        conn.query(query, (err, result) => {
+            if(err) {
+                return res.status(500).send('Internal Server Error1');
+            }
+            if(result.length === 0) {
+                return res.status(404).send('User not found');
+            }
+            if(result[0].valid == false){
+                return res.status(404).send('User not valid');
+            }
+            res.send(result[0]);
         });
     } catch(err) {
         res.status(500).send('Internal Server Error');
@@ -382,7 +411,7 @@ router.get('/user', (req, res) => {
         if(!req.session.userId){
             return res.status(400).send('Session expired');
         }
-        const query = `SELECT * FROM User WHERE userId = ${req.session.userId}`;
+        const query = `SELECT * FROM User WHERE userId=${req.session.userId}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -391,7 +420,7 @@ router.get('/user', (req, res) => {
                 return res.status(404).send('User not found');
             }
             if(result[0].valid == false){
-                return res.status(404).send('User not valid');
+                return res.status(405).send('User not valid');
             }
             res.status(200).send(result[0]);
         });
@@ -406,9 +435,10 @@ router.post('/user', (req, res) => {
     try{
         const { email, password, nickname, profile_image } = req.body;
         const query = `INSERT INTO User (email, password, nickname, profile_image, valid)
-        VALUES (${email}, ${password}, ${nickname}, ${profile_image}, true)`;
+        VALUES ("${email}", "${password}", "${nickname}", "${profile_image}", true)`;
         conn.query(query, (err, result) => {
             if(err) {
+                console.log(err);
                 return res.status(500).send('Internal Server Error1');
             }
             res.status(200).send('User created');
@@ -416,6 +446,32 @@ router.post('/user', (req, res) => {
     }
     catch(err) {
         res.status(500).send('Internal Server Error');
+    }
+});
+
+// 닉네임 검사 - POST
+// body - nickname
+router.post('/nickname', (req, res) => {
+    try{
+        if(!req.session.userId){
+            return res.status(400).send('Session expired');
+        }
+        const { nickname } = req.body;
+        const query = `SELECT * FROM User WHERE nickname="${nickname}"`;
+        conn.query(query, (err, result) => {
+            if(err) {
+                return res.status(500).send('Internal Server Error1');
+            }
+            if(result.length === 0) {
+                return res.status(200).send('Nickname available');
+            }
+            else {
+                return res.status(300).send('Nickname already exists');
+            }
+        });
+    }
+    catch(err){
+
     }
 });
 
@@ -427,15 +483,23 @@ router.patch('/user', (req, res) => {
             return res.status(400).send('Session expired');
         }
         const { nickname } = req.body;
-        const query = `UPDATE User SET nickname = ${nickname} WHERE userId = ${req.session.userId}`;
+        const query = `SELECT * FROM User WHERE nickname="${nickname}"`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
             }
-            if(result[0].valid == false){
-                return res.status(404).send('User not valid');
+            if(result.length === 0) {
+                const query2 = `UPDATE User SET nickname="${nickname}" WHERE userId=${req.session.userId}`;
+                conn.query(query2, (err, result) => {
+                    if(err) {
+                        return res.status(500).send('Internal Server Error1');
+                    }
+                    res.status(200).send('User updated');
+                });
             }
-            res.status(200).send('User updated');
+            else {
+                return res.status(404).send('Nickname already exists');
+            }
         });
     } catch(err) {
         res.status(500).send('Internal Server Error');
@@ -448,7 +512,7 @@ router.delete('/user', (req, res) => {
         if(!req.session.userId){
             return res.status(400).send('Session expired');
         }
-        const query = `SELECT * FROM User WHERE userId = ${req.session.userId}`;
+        const query = `SELECT * FROM User WHERE userId=${req.session.userId}`;
         conn.query(query, (err, result) => {
             if(err) {
                 return res.status(500).send('Internal Server Error1');
@@ -460,7 +524,7 @@ router.delete('/user', (req, res) => {
                 return res.status(404).send('User not valid');
             }
             // user 삭제
-            const query2 = `UPDATE User SET valid = false WHERE userId = ${req.session.userId}`;
+            const query2 = `UPDATE User SET valid=false WHERE userId=${req.session.userId}`;
             conn.query(query2, (err, result) => {
                 if(err) {
                     return res.status(500).send('Internal Server Error2');
@@ -471,13 +535,13 @@ router.delete('/user', (req, res) => {
                     }
                 });
                 res.status(200).send('User deleted');
-                const query3 = `UPDATE Post SET valid = false WHERE writer = ${req.session.userId}`;
+                const query3 = `UPDATE Post SET valid=false WHERE userId=${req.session.userId}`;
                 // 사용자가 작성한 게시글 삭제
                 conn.query(query3, (err, result) => {
                     if(err) {
                         return res.status(500).send('Internal Server Error4');
                     }
-                    const query4 = `UPDATE Comment SET valid = false WHERE writer = ${req.session.userId}`;
+                    const query4 = `UPDATE Comment SET valid=false WHERE userId=${req.session.userId}`;
                     // 사용자가 작성한 댓글 삭제
                     conn.query(query4, (err, result) => {
                         if(err) {
@@ -500,13 +564,10 @@ router.patch('/user/password', (req, res) => {
         return res.status(400).send('Session expired');
     }
     const { password } = req.body;
-    const query = `UPDATE User SET password = ${password} WHERE userId = ${req.session.userId}`;
+    const query = `UPDATE User SET password="${password}" WHERE userId=${req.session.userId}`;
     conn.query(query, (err, result) => {
         if(err) {
             return res.status(500).send('Internal Server Error1');
-        }
-        if(result[0].valid == false){
-            return res.status(404).send('User not valid');
         }
         res.status(200).send('Password changed');
     });
